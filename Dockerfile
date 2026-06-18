@@ -17,8 +17,14 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 WORKDIR /workspace
 
 # Only the libs the base image doesn't already provide. torch is NOT reinstalled.
+# Pin numpy to the NGC base's exact version so transformers/pandas can't replace it —
+# a mismatched numpy breaks torch's C bridge ("Numpy is not available"). BASE_NP is read
+# from the pristine base numpy at the start of this layer (prior layers were apt-only).
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+RUN BASE_NP="$(python -c 'import numpy; print(numpy.__version__)')" \
+    && echo "pinning numpy==${BASE_NP}" \
+    && pip install --no-cache-dir "numpy==${BASE_NP}" -r requirements.txt \
+    && python -c "import torch, numpy as np; torch.from_numpy(np.zeros(3)); print('numpy bridge OK')"
 
 COPY . .
 
