@@ -30,3 +30,17 @@ YESNO_VARIANTS = [
 
 # Keyword set used by find_video.py to locate the originally-observed clip.
 TARGET_KEYWORDS = ["skat", "rink", "yellow shirt", "yellow", "getting back up", "fall"]
+
+# Subject-referent probes. The contradictions cluster on clips whose describe-output says
+# "child"/"baby"/"dog", yet the eval question asks about "the person". Vary ONLY the subject
+# (predicate stays "fall") to test H4: is the word "person" the trigger for "No"?
+#   - if someone/anyone/child -> Yes but person -> No  => H4 (referent mismatch)
+#   - if all subjects still -> No (esp. on the adult "man" clip) => H1/H3 underneath
+SUBJECT_PROBES = {
+    "is_person_present": "Is there a person in the video? Answer either yes or no",
+    "person_fall": "Did the person fall in the video? Answer either yes or no",
+    "someone_fall": "Did someone fall in the video? Answer either yes or no",
+    "anyone_fall": "Did anyone fall in the video? Answer either yes or no",
+    "child_fall": "Did the child fall in the video? Answer either yes or no",
+    "accident": "Did an accident happen in the video? Answer either yes or no",
+}
