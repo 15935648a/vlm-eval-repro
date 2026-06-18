@@ -3,10 +3,10 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-python -c "from src.dataset_utils import download_dataset; print('dataset ->', download_dataset())"
+python3 -c "from src.dataset_utils import download_dataset; print('dataset ->', download_dataset())"
 
 # Pre-download the model weights so the first run doesn't stall.
-python -c "
+python3 -c "
 from src import config
 from huggingface_hub import snapshot_download
 print('model ->', snapshot_download(config.MODEL_ID))

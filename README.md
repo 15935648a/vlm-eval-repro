@@ -36,23 +36,34 @@ Three competing hypotheses we want to separate:
 2. **Analysis** (next): yes/no logits → logit lens → linear probe → activation patching.
    `model_runner` already exposes first-token yes/no probabilities and `output_hidden_states`.
 
-## Setup (lab machine, ~100GB VRAM — plenty for an e2b model)
+## Setup (lab machine, Docker + GPU, ~100GB VRAM — plenty for an e2b model)
+
+Everything runs inside the container. The repo is bind-mounted, so `data/` and `results/`
+land on the host; the HF cache is mounted too, so model/dataset downloads survive restarts.
 
 ```bash
-git clone <this-repo>
+git clone https://github.com/15935648a/vlm-eval-repro.git
 cd vlm-eval-repro
-python -m venv .venv && source .venv/bin/activate
-pip install -r requirements.txt   # needs a recent transformers with Gemma 4 support
 
-# 1. download the benchmark videos (~1.15 GB) + the model
-bash scripts/01_download_data.sh
+# 1. build the image (CUDA 12.4 + recent transformers for Gemma 4)
+bash scripts/00_docker_build.sh
 
-# 2. find which clip produces the skating/fall description
-bash scripts/02_find_video.sh        # writes results/find_video.csv
+# 2. download benchmark videos (~1.15 GB) + model weights (inside the container)
+bash scripts/00_docker_run.sh bash scripts/01_download_data.sh
 
-# 3. reproduce the contradiction on that clip (greedy, repeated for determinism)
-python -m src.reproduce --video data/videos/<the_clip>.mp4
+# 3. find which clip produces the skating/fall description -> results/find_video.csv
+bash scripts/00_docker_run.sh bash scripts/02_find_video.sh
+
+# 4. reproduce the contradiction on that clip (greedy, repeated for determinism)
+bash scripts/00_docker_run.sh python3 -m src.reproduce \
+    --video data/vlm-eval-videos/<the_clip>.mp4
+
+# or just open an interactive shell in the container and run things by hand:
+bash scripts/00_docker_run.sh
 ```
+
+> No-Docker fallback: `python3 -m venv .venv && source .venv/bin/activate &&
+> pip install -r requirements.txt`, then run the `scripts/0[123]_*.sh` directly.
 
 ## Layout
 
@@ -65,7 +76,10 @@ src/
   dataset_utils.py iterate the downloaded benchmark + metadata.csv
   find_video.py    run the describe-prompt over all clips, grep the target description
   reproduce.py     run both prompts greedy on one clip, dump outputs + yes/no probs
-scripts/           thin shell wrappers
+scripts/
+  00_docker_build.sh / 00_docker_run.sh   build image / run in GPU container
+  01_download_data.sh 02_find_video.sh 03_reproduce.sh
 results/           outputs (gitignored)
 data/              videos + model cache (gitignored)
+Dockerfile         CUDA 12.4 runtime + deps
 ```
