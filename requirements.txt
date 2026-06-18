@@ -1,12 +1,10 @@
-# Gemma 4 support requires a recent transformers. Bump if the model fails to load.
+# torch / numpy / pillow are provided by the NGC PyTorch base image (CUDA build for
+# aarch64 + Blackwell). Do NOT add torch here or you risk overwriting the working build.
+# For a non-NGC setup, install a CUDA torch matching your platform separately.
 transformers>=4.53.0
 accelerate>=0.34.0
-torch>=2.3.0
 huggingface_hub>=0.24.0
-pillow>=10.0.0
-numpy>=1.26.0
 pandas>=2.0.0
 tqdm>=4.66.0
-# frame sampling: decord is preferred; opencv is the fallback inside video_utils.py
-decord>=0.6.0
+# decord has no prebuilt aarch64 wheel -> we use the opencv fallback in video_utils.py
 opencv-python-headless>=4.9.0

@@ -36,16 +36,24 @@ Three competing hypotheses we want to separate:
 2. **Analysis** (next): yes/no logits → logit lens → linear probe → activation patching.
    `model_runner` already exposes first-token yes/no probabilities and `output_hidden_states`.
 
-## Setup (lab machine, Docker + GPU, ~100GB VRAM — plenty for an e2b model)
+## Setup (DGX Spark — GB10 Grace-Blackwell, aarch64, Docker)
 
-Everything runs inside the container. The repo is bind-mounted, so `data/` and `results/`
-land on the host; the HF cache is mounted too, so model/dataset downloads survive restarts.
+Native arm64, so **no QEMU** (build and run on the same machine). The base image is the NGC
+PyTorch container, which ships a CUDA torch built for aarch64 + Blackwell (sm_121) — plain
+`pip install torch` on arm64 does not. Everything runs inside the container; the repo is
+bind-mounted (so `data/` and `results/` land on the host) and the HF cache is mounted too.
 
 ```bash
 git clone https://github.com/15935648a/vlm-eval-repro.git
 cd vlm-eval-repro
 
-# 1. build the image (CUDA 12.4 + recent transformers for Gemma 4)
+# 0. smoke-test GPU + base tag (bump tag if it reports "no kernel image ... sm_121"):
+docker run --rm --gpus all nvcr.io/nvidia/pytorch:25.01-py3 \
+  python -c "import torch; x=torch.randn(4,4,device='cuda'); print('ok', float((x@x).sum()))"
+# if the GPU isn't visible, use CDI instead: export GPU_FLAG='--device nvidia.com/gpu=all'
+
+# 1. build the image (NGC PyTorch base + transformers for Gemma 4)
+#    override base tag if needed: docker build --build-arg BASE_IMAGE=nvcr.io/nvidia/pytorch:25.05-py3 -t vlm-eval-repro .
 bash scripts/00_docker_build.sh
 
 # 2. download benchmark videos (~1.15 GB) + model weights (inside the container)

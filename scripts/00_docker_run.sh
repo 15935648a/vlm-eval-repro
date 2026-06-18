@@ -8,8 +8,12 @@ cd "$(dirname "$0")/.."
 HF_CACHE="${HF_HOME:-$HOME/.cache/huggingface}"
 mkdir -p "$HF_CACHE"
 
+# GB10/DGX Spark: "--gpus all" works when the nvidia toolkit is installed.
+# If the GPU isn't visible in the container, switch to CDI: GPU_FLAG="--device nvidia.com/gpu=all"
+GPU_FLAG="${GPU_FLAG:---gpus all}"
+
 docker run --rm -it \
-  --gpus all \
+  ${GPU_FLAG} \
   --shm-size=16g \
   -v "$PWD":/workspace \
   -v "$HF_CACHE":/root/.cache/huggingface \
