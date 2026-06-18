@@ -23,8 +23,11 @@ import torch
 
 from . import config
 from .model_runner import GemmaVideoRunner
-from .prompts import DESCRIBE_PROMPT, YESNO_PROMPT
+from .prompts import DESCRIBE_PROMPT, SUBJECT_PROBES, YESNO_PROMPT
 from .video_utils import sample_frames
+
+PERSON_FALL = SUBJECT_PROBES["person_fall"]        # the failing prompt (recipient)
+PERSON_PRESENT = SUBJECT_PROBES["is_person_present"]  # works (Yes) on the same clip
 
 
 # --- locate the decoder layers / final norm / lm_head inside the wrapper ----------------
@@ -77,13 +80,17 @@ def logit_lens(runner: GemmaVideoRunner, frames, prompt: str):
 
 
 @torch.no_grad()
-def activation_patch(runner: GemmaVideoRunner, frames):
-    """Patch the describe-run residual (answer position) into the yes/no run, per layer.
-    Returns P(yes) after patching each layer; compare to the unpatched baseline."""
+def activation_patch(runner: GemmaVideoRunner, frames, donor_prompt: str, recipient_prompt: str):
+    """Patch the donor-run residual (answer position) into the recipient run, per layer.
+    Returns P(yes) after patching each layer; compare to the unpatched baseline.
+
+    The informative contrasts on a contradiction clip (recipient = the failing fall question):
+      - donor = describe prompt        -> does injecting the 'fall happened' content flip No->Yes?
+      - donor = is-person-present      -> is the answer governed by a malleable late decision?"""
     lm = _language_model(runner.model)
     layers = lm.layers
 
-    # 1. capture describe-run residual at the answer position, per layer (block output).
+    # 1. capture donor-run residual at the answer position, per layer (block output).
     donor = {}
 
     def make_capture(i):
@@ -92,13 +99,13 @@ def activation_patch(runner: GemmaVideoRunner, frames):
         return hook
 
     handles = [layers[i].register_forward_hook(make_capture(i)) for i in range(len(layers))]
-    runner.forward_hidden(frames, DESCRIBE_PROMPT)
+    runner.forward_hidden(frames, donor_prompt)
     for h in handles:
         h.remove()
 
-    # 2. baseline P(yes) on the yes/no prompt.
-    base = runner.first_token_yes_no(frames, YESNO_PROMPT)
-    yesno_inputs = runner._build_inputs(frames, YESNO_PROMPT)
+    # 2. baseline P(yes) on the recipient (failing) prompt.
+    base = runner.first_token_yes_no(frames, recipient_prompt)
+    yesno_inputs = runner._build_inputs(frames, recipient_prompt)
 
     # 3. for each layer, inject the donor vector at the answer position and re-read P(yes).
     results = [{"layer": "baseline", "p_yes": base["p_yes"], "p_no": base["p_no"]}]
@@ -130,19 +137,26 @@ def main():
 
     record = {
         "video": args.video,
-        "logit_lens_yesno": logit_lens(runner, frames, YESNO_PROMPT),
+        # where, across depth, "No" is decided on the failing fall question:
+        "logit_lens_person_fall": logit_lens(runner, frames, PERSON_FALL),
+        # the two clean controls that DO surface the fall / a Yes:
         "logit_lens_describe": logit_lens(runner, frames, DESCRIBE_PROMPT),
-        "activation_patch_describe_into_yesno": activation_patch(runner, frames),
+        "logit_lens_person_present": logit_lens(runner, frames, PERSON_PRESENT),
+        # causal: which layer, when patched, flips the fall answer No->Yes:
+        "patch_describe_into_fall": activation_patch(runner, frames, DESCRIBE_PROMPT, PERSON_FALL),
+        "patch_present_into_fall": activation_patch(runner, frames, PERSON_PRESENT, PERSON_FALL),
     }
     with open(args.out, "w") as f:
         json.dump(record, f, indent=2)
 
-    print("logit lens (yes/no prompt) — P(yes)/P(no) by layer:")
-    for r in record["logit_lens_yesno"]:
+    print("logit lens on 'Did the person fall?' — P(yes)/P(no) by layer:")
+    for r in record["logit_lens_person_fall"]:
         print(f"  L{r['layer']:>2}  yes={r['p_yes']:.3f} no={r['p_no']:.3f}  top={r['top']!r}")
-    print("\nactivation patch (describe -> yes/no), P(yes) by patched layer:")
-    for r in record["activation_patch_describe_into_yesno"]:
-        print(f"  {str(r['layer']):>8}  p_yes={r['p_yes']:.3f}")
+    for tag, key in (("describe -> fall", "patch_describe_into_fall"),
+                     ("present  -> fall", "patch_present_into_fall")):
+        print(f"\nactivation patch ({tag}), P(yes) by patched layer:")
+        for r in record[key]:
+            print(f"  {str(r['layer']):>8}  p_yes={r['p_yes']:.3f}")
     print(f"\nsaved -> {args.out}")
 
 

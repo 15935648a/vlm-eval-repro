@@ -28,7 +28,7 @@ class GemmaVideoRunner:
         self.processor = AutoProcessor.from_pretrained(model_id)
         self.model = AutoModelForImageTextToText.from_pretrained(
             model_id,
-            torch_dtype=_dtype(config.DTYPE),
+            dtype=_dtype(config.DTYPE),   # `torch_dtype` is deprecated in recent transformers
             device_map=device,
         )
         self.model.eval()
