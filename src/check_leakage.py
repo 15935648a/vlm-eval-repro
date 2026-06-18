@@ -4,9 +4,9 @@ Both the eval benchmark (gnitoahc/vlm-eval-videos) and the training set
 (bear7011/gemma-4-e4b-kinetics_54K) are sourced from Kinetics/YouTube, so the same video
 can be in both. We compare at the YouTube-video-id level.
 
-GPU-free and numpy-free (stdlib + huggingface_hub only) — runnable on the host directly:
-    pip install huggingface_hub
-    python3 -m src.check_leakage
+CPU-only and numpy-free (stdlib + huggingface_hub only), but run it in the same container
+as everything else (lab policy = always Docker):
+    bash scripts/00_docker_run.sh bash scripts/05_check_leakage.sh
 """
 import argparse
 import csv

@@ -87,6 +87,8 @@ src/
 scripts/
   00_docker_build.sh / 00_docker_run.sh   build image / run in GPU container
   01_download_data.sh 02_find_video.sh 03_reproduce.sh
+  04_analyze.sh                            logit lens + activation patching (milestone 2)
+  05_check_leakage.sh                      eval-vs-training video-id overlap (CPU-only)
 results/           outputs (gitignored)
 data/              videos + model cache (gitignored)
 Dockerfile         CUDA 12.4 runtime + deps
