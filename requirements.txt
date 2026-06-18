@@ -6,5 +6,5 @@ accelerate>=0.34.0
 huggingface_hub>=0.24.0
 pandas>=2.0.0
 tqdm>=4.66.0
-# decord has no prebuilt aarch64 wheel -> we use the opencv fallback in video_utils.py
-opencv-python-headless>=4.9.0
+# No opencv/decord: their aarch64 wheels clash with the NGC base's numpy ABI. Frame
+# decoding goes through ffmpeg (already in the image) -> PIL, see src/video_utils.py.
