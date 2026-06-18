@@ -1,0 +1,12 @@
+# Gemma 4 support requires a recent transformers. Bump if the model fails to load.
+transformers>=4.53.0
+accelerate>=0.34.0
+torch>=2.3.0
+huggingface_hub>=0.24.0
+pillow>=10.0.0
+numpy>=1.26.0
+pandas>=2.0.0
+tqdm>=4.66.0
+# frame sampling: decord is preferred; opencv is the fallback inside video_utils.py
+decord>=0.6.0
+opencv-python-headless>=4.9.0

@@ -1,0 +1,15 @@
+__pycache__/
+*.pyc
+.venv/
+venv/
+.env
+data/
+results/
+models/
+*.mp4
+*.csv
+!**/metadata.csv
+.DS_Store
+
+# OMC runtime state
+.omc/
